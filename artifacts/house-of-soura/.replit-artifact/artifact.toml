@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "House of Soura Boutique"
+description = "A cinematic luxury fashion boutique website for House of Soura, featuring editorial product storytelling, an interactive collection, and a responsive shopping bag experience."
+version = "1.0.0"
+id = "artifacts/house-of-soura"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19429
+
+[services.development]
+run = "pnpm --filter @workspace/house-of-soura run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/house-of-soura", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/house-of-soura/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19429"
+BASE_PATH = "/"

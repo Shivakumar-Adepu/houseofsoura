@@ -1,6 +1,6 @@
-# [Project name]
+# House of Soura Boutique
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A cinematic luxury fashion storefront for House of Soura, built around its HS lotus monogram and an editorial shopping experience.
 
 ## Run & Operate
 
@@ -22,23 +22,32 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/house-of-soura/src/App.tsx` — single-page storefront, product interactions, overlays, quick view, and bag state
+- `artifacts/house-of-soura/src/index.css` — House of Soura visual system, responsive layouts, depth effects, and motion
+- `artifacts/house-of-soura/public/` — supplied monogram and boutique editorial imagery
+- `artifacts/house-of-soura/.replit-artifact/artifact.toml` — artifact metadata and preview routing
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Presentation-first React + Vite site with client-side interaction state; no backend is needed for the initial boutique experience.
+- The supplied monogram is treated as the identity source of truth and is used as a local public asset.
+- The page uses a dark atelier visual language with antique gold as the primary accent and blush pink as a restrained highlight.
+- Motion includes reduced-motion handling so the cinematic treatment remains accessible.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Scrollable editorial home experience for the House of Soura collection.
+- Collection browsing with quick-view product details, size selection, wishlist feedback, and add-to-bag behavior.
+- Responsive menu, search overlay, shopping bag drawer, journal prompts, private viewing CTA, and newsletter signup feedback.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+ - Use the supplied logo and prompt as the foundation for the boutique identity.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The web artifact workflow supplies `PORT` and `BASE_PATH`; use the managed workflow for local preview.
+- Keep routes prefix-aware through the artifact's Vite base configuration.
 
 ## Pointers
 
