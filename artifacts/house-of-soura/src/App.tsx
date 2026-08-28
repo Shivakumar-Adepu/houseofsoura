@@ -1,5 +1,5 @@
-import { type ReactNode, useEffect, useState } from 'react';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, Eye, Heart, Instagram, Menu as MenuIcon, Plus, Search, ShoppingBag, X } from 'lucide-react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { ArrowDownRight, ArrowLeft, ArrowRight, ArrowUpRight, Check, Eye, Heart, Instagram, Menu as MenuIcon, Plus, Search, ShoppingBag, X } from 'lucide-react';
 
 type Product = {
   id: number;
@@ -82,24 +82,110 @@ function PrimaryButton({ children, onClick, dark = false, testId }: { children: 
   );
 }
 
-function ProductCard({ product, onQuickView, onAdd }: { product: Product; onQuickView: (product: Product) => void; onAdd: (product: Product) => void }) {
+function WardrobeCoverflow({ activeIndex, setActiveIndex, onQuickView, onAdd }: { activeIndex: number; setActiveIndex: (index: number) => void; onQuickView: (product: Product) => void; onAdd: (product: Product) => void }) {
+  const [dragStart, setDragStart] = useState<number | null>(null);
+  const [dragDelta, setDragDelta] = useState(0);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const count = products.length;
+  const activeProduct = products[activeIndex];
+
+  const move = (direction: number) => {
+    setActiveIndex((activeIndex + direction + count) % count);
+    setDragDelta(0);
+  };
+  const relativePosition = (index: number) => {
+    let position = index - activeIndex;
+    if (position > count / 2) position -= count;
+    if (position < -count / 2) position += count;
+    return position;
+  };
+  const endDrag = () => {
+    if (dragStart !== null) {
+      if (Math.abs(dragDelta) > 46) move(dragDelta < 0 ? 1 : -1);
+      setDragStart(null);
+      setDragDelta(0);
+    }
+  };
+
   return (
-    <article className="group min-w-[72vw] sm:min-w-[310px] md:min-w-0" data-testid={`card-product-${product.id}`}>
-      <div className="relative aspect-[.77] overflow-hidden bg-[#26221e]">
-        <img src={product.image} alt={product.name} className="h-full w-full object-cover object-center opacity-90 transition duration-700 group-hover:scale-[1.045] group-hover:opacity-100" data-testid={`img-product-${product.id}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#171411]/75 via-transparent to-transparent opacity-80" />
-        <button onClick={() => onQuickView(product)} className="absolute bottom-4 left-4 right-4 flex translate-y-2 items-center justify-between border border-[#eadcb7]/40 bg-[#171411]/80 px-4 py-3 text-[10px] uppercase tracking-[.18em] text-[#eadcb7] opacity-0 backdrop-blur-md transition duration-300 group-hover:translate-y-0 group-hover:opacity-100" data-testid={`button-quick-view-${product.id}`}>
-          Quick view <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </button>
-        <button onClick={() => onAdd(product)} aria-label={`Add ${product.name} to bag`} className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-[#eadcb7]/50 bg-[#171411]/70 text-[#eadcb7] opacity-0 backdrop-blur-md transition duration-300 hover:border-[#e8a0bd] hover:text-[#e8a0bd] group-hover:opacity-100" data-testid={`button-add-product-${product.id}`}>
-          <Plus className="h-4 w-4" strokeWidth={1.5} />
-        </button>
+    <div className="mt-10">
+      <div
+        ref={stageRef}
+        id="wardrobe-coverflow"
+        className="wardrobe-stage drag-cursor relative -mx-5 overflow-hidden px-5 sm:-mx-10 sm:px-10 lg:-mx-14 lg:px-14"
+        onPointerDown={(event) => { if (event.pointerType !== 'mouse' || event.button === 0) { setDragStart(event.clientX); event.currentTarget.setPointerCapture(event.pointerId); } }}
+        onPointerMove={(event) => { if (dragStart !== null) setDragDelta(event.clientX - dragStart); }}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onPointerLeave={() => { if (dragStart !== null && Math.abs(dragDelta) > 46) endDrag(); }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); }
+          if (event.key === 'ArrowRight') { event.preventDefault(); move(1); }
+        }}
+        tabIndex={0}
+        role="region"
+        aria-label="Collection lookbook"
+        data-testid="region-wardrobe-coverflow"
+      >
+        <div className="wardrobe-track">
+          <div className="wardrobe-shadow" />
+          {products.map((product, index) => {
+            const position = relativePosition(index);
+            const isActive = position === 0;
+            const distance = Math.abs(position);
+            const transform = `translateX(calc(-50% + ${position * 31}vw)) translateZ(${isActive ? 80 : -distance * 85}px) rotateY(${position * -22}deg) scale(${isActive ? 1 : Math.max(.68, 1 - distance * .14)})`;
+            return (
+              <div
+                key={product.id}
+                className={`wardrobe-slide ${isActive ? 'wardrobe-slide-active' : ''}`}
+                style={{ transform, opacity: distance > 2 ? 0 : isActive ? 1 : .58, filter: isActive ? 'blur(0)' : `blur(${Math.min(distance * 1.3, 2.8)}px)`, zIndex: 10 - distance }}
+                aria-hidden={!isActive && distance > 1}
+                data-testid={`slide-product-${product.id}`}
+              >
+                <div className="group relative h-full overflow-hidden border border-[#d6b35a]/25 bg-[#26221e] shadow-2xl shadow-black/50">
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-[1] h-full w-full cursor-pointer"
+                    onClick={() => setActiveIndex(index)}
+                    aria-label={`Select ${product.name}`}
+                    tabIndex={isActive || distance === 1 ? 0 : -1}
+                    data-testid={`button-select-product-${product.id}`}
+                  >
+                    <img src={product.image} alt={product.name} className="h-full w-full select-none object-cover object-center opacity-90 transition duration-700 group-hover:scale-[1.035] group-hover:opacity-100" draggable="false" data-testid={`img-product-${product.id}`} />
+                  </button>
+                  <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-[#171411]/90 via-transparent to-[#171411]/5" />
+                  <div className="absolute left-4 top-4 z-[3] border border-[#eadcb7]/35 bg-[#171411]/65 px-3 py-2 font-mono text-[9px] tracking-[.2em] text-[#e8a0bd] backdrop-blur-md">{String(index + 1).padStart(2, '0')} / 0{count}</div>
+                  <button type="button" onClick={() => { setActiveIndex(index); onAdd(product); }} tabIndex={isActive || distance === 1 ? 0 : -1} aria-label={`Add ${product.name} to bag`} className="absolute right-4 top-4 z-[4] flex h-10 w-10 items-center justify-center rounded-full border border-[#eadcb7]/50 bg-[#171411]/75 text-[#eadcb7] backdrop-blur-md transition hover:border-[#e8a0bd] hover:text-[#e8a0bd]" data-testid={`button-add-product-${product.id}`}>
+                    <Plus className="h-4 w-4" strokeWidth={1.5} />
+                  </button>
+                  <div className="pointer-events-none absolute bottom-5 left-5 right-5 z-[3] flex items-end justify-between gap-3">
+                    <div><p className="eyebrow mb-2 !text-[#d6b35a]">{product.category}</p><h3 className="font-serif text-2xl leading-none text-[#e8e2d4]" data-testid={`text-product-name-${product.id}`}>{product.name}</h3></div>
+                    <span className="shrink-0 text-sm text-[#e8a0bd]" data-testid={`text-product-price-${product.id}`}>{product.price}</span>
+                  </div>
+                  {isActive && <button type="button" onClick={() => onQuickView(product)} className="absolute bottom-5 right-5 z-[5] flex translate-y-1/2 items-center gap-3 border border-[#eadcb7]/50 bg-[#171411]/85 px-4 py-3 text-[10px] uppercase tracking-[.18em] text-[#eadcb7] backdrop-blur-md transition hover:border-[#e8a0bd] hover:text-[#e8a0bd] sm:bottom-20 sm:translate-y-0" data-testid={`button-quick-view-${product.id}`}>Quick view <Eye className="h-3.5 w-3.5" strokeWidth={1.5} /></button>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button type="button" onClick={() => move(-1)} className="absolute left-7 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#d6b35a]/45 bg-[#171411]/80 text-[#d6b35a] backdrop-blur-md transition hover:border-[#e8a0bd] hover:text-[#e8a0bd] sm:left-12 lg:left-20" aria-label="Previous look" data-testid="button-previous-look"><ArrowLeft className="h-4 w-4" strokeWidth={1.2} /></button>
+        <button type="button" onClick={() => move(1)} className="absolute right-7 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center border border-[#d6b35a]/45 bg-[#171411]/80 text-[#d6b35a] backdrop-blur-md transition hover:border-[#e8a0bd] hover:text-[#e8a0bd] sm:right-12 lg:right-20" aria-label="Next look" data-testid="button-next-look"><ArrowRight className="h-4 w-4" strokeWidth={1.2} /></button>
       </div>
-      <div className="flex items-start justify-between gap-3 pt-4">
-        <div><p className="eyebrow mb-2">{product.category}</p><h3 className="font-serif text-lg text-[#e8e2d4]" data-testid={`text-product-name-${product.id}`}>{product.name}</h3></div>
-        <span className="mt-5 shrink-0 text-sm text-[#e8a0bd]" data-testid={`text-product-price-${product.id}`}>{product.price}</span>
+      <div className="mx-auto mt-8 flex max-w-[350px] items-center gap-4">
+        <span className="font-mono text-[10px] text-[#e8a0bd]" data-testid="text-look-position">{String(activeIndex + 1).padStart(2, '0')} <span className="text-[#7d7467]">/ 0{count}</span></span>
+        <div className="wardrobe-progress flex-1" aria-label={`Look ${activeIndex + 1} of ${count}`}><span style={{ width: `${((activeIndex + 1) / count) * 100}%` }} /></div>
+        <span className="eyebrow !text-[#7d7467]">Drag to explore</span>
       </div>
-    </article>
+      <div className="mx-auto mt-7 flex max-w-[490px] flex-col items-center text-center">
+        <p className="eyebrow mb-3 !text-[#d6b35a]">{activeProduct.color}</p>
+        <h3 className="font-serif text-3xl text-[#e8e2d4]" data-testid="text-active-look-name">{activeProduct.name}</h3>
+        <p className="mt-3 max-w-[390px] text-xs leading-6 text-[#a99f8c]">{activeProduct.description}</p>
+        <div className="mt-6 flex items-center gap-5">
+          <button type="button" onClick={() => onQuickView(activeProduct)} className="border-b border-[#d6b35a]/70 pb-2 text-[10px] uppercase tracking-[.2em] text-[#d6b35a] transition hover:text-[#e8a0bd]" data-testid="button-active-quick-view">Open the piece <ArrowUpRight className="ml-2 inline h-3.5 w-3.5" strokeWidth={1.2} /></button>
+          <button type="button" onClick={() => onAdd(activeProduct)} className="border-b border-[#e8a0bd]/70 pb-2 text-[10px] uppercase tracking-[.2em] text-[#e8a0bd] transition hover:text-[#d6b35a]" data-testid="button-active-add-to-bag">Add to bag</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -109,6 +195,7 @@ function Home() {
   const [bagOpen, setBagOpen] = useState(false);
   const [bag, setBag] = useState<Product[]>([]);
   const [quickView, setQuickView] = useState<Product | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [notice, setNotice] = useState('');
   const [email, setEmail] = useState('');
@@ -125,6 +212,18 @@ function Home() {
     document.body.style.overflow = menuOpen || searchOpen || bagOpen || !!quickView ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [menuOpen, searchOpen, bagOpen, quickView]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (quickView) setQuickView(null);
+      else if (bagOpen) setBagOpen(false);
+      else if (searchOpen) setSearchOpen(false);
+      else if (menuOpen) setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [quickView, bagOpen, searchOpen, menuOpen]);
 
   const addToBag = (product: Product, size?: string) => {
     setBag((current) => [...current, product]);
@@ -190,11 +289,10 @@ function Home() {
         <section id="collection" className="section-pad relative">
           <div className="mb-12 flex flex-col justify-between gap-8 md:flex-row md:items-end">
             <div><p className="eyebrow mb-4">The edit / 01</p><h2 className="font-serif text-5xl font-normal leading-none tracking-[-.04em] text-[#e8e2d4] sm:text-7xl">The <i className="text-[#d6b35a]">entrance</i><br />edit.</h2></div>
-            <div className="max-w-[300px]"><p className="mb-5 text-sm leading-6 text-[#a99f8c]">Four silhouettes. One point of view. Pieces that hold their own in a room.</p><button className="group flex items-center gap-3 text-[10px] uppercase tracking-[.2em] text-[#d6b35a]" data-testid="button-view-all-products">View all pieces <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" strokeWidth={1.2} /></button></div>
+             <div className="max-w-[300px]"><p className="mb-5 text-sm leading-6 text-[#a99f8c]">Four silhouettes. One point of view. Pieces that hold their own in a room.</p><button onClick={() => { setActiveIndex(0); document.getElementById('wardrobe-coverflow')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }} className="group flex items-center gap-3 text-[10px] uppercase tracking-[.2em] text-[#d6b35a]" data-testid="button-view-all-products">View all pieces <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" strokeWidth={1.2} /></button></div>
           </div>
-          <div className="grid gap-x-5 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => <ProductCard key={product.id} product={product} onQuickView={openQuickView} onAdd={addToBag} />)}
-          </div>
+           <div className="mb-4 flex items-center gap-3 text-[9px] uppercase tracking-[.22em] text-[#7d7467]"><span className="h-px w-8 bg-[#e8a0bd]" /> The wardrobe transition <span className="hidden sm:inline">/ select a look to bring it forward</span></div>
+           <WardrobeCoverflow activeIndex={activeIndex} setActiveIndex={setActiveIndex} onQuickView={openQuickView} onAdd={addToBag} />
         </section>
 
         <section id="the-house" className="relative overflow-hidden border-y border-[#d6b35a]/15 bg-[#24201b]">
@@ -225,7 +323,7 @@ function Home() {
 
         <section id="journal" className="border-t border-[#d6b35a]/15 bg-[#211d18]">
           <div className="section-pad">
-            <div className="mb-12 flex items-end justify-between"><div><p className="eyebrow mb-4">From the journal</p><h2 className="font-serif text-5xl tracking-[-.04em] text-[#e8e2d4] sm:text-6xl">After <i className="text-[#d6b35a]">dark.</i></h2></div><button className="hidden items-center gap-3 text-[10px] uppercase tracking-[.2em] text-[#d6b35a] sm:flex" data-testid="button-view-journal">All stories <ArrowRight className="h-4 w-4" strokeWidth={1.2} /></button></div>
+             <div className="mb-12 flex items-end justify-between"><div><p className="eyebrow mb-4">From the journal</p><h2 className="font-serif text-5xl tracking-[-.04em] text-[#e8e2d4] sm:text-6xl">After <i className="text-[#d6b35a]">dark.</i></h2></div><button onClick={() => setNotice('The journal is opening soon')} className="hidden items-center gap-3 text-[10px] uppercase tracking-[.2em] text-[#d6b35a] sm:flex" data-testid="button-view-journal">All stories <ArrowRight className="h-4 w-4" strokeWidth={1.2} /></button></div>
             <div className="grid border-y border-[#d6b35a]/20 md:grid-cols-3">
               {[['01', 'The language of a first impression', 'On dressing for the moment before the room turns.'], ['02', 'A rose in the dark', 'Why restraint can be the most arresting thing of all.'], ['03', 'Notes on the nocturne', 'The pieces we keep reaching for, long after midnight.']].map(([number, title, text]) => <button key={number} onClick={() => setNotice(`Opening journal / ${title}`)} className="group border-b border-[#d6b35a]/20 p-6 text-left transition hover:bg-[#2a241e] md:border-b-0 md:border-r last:border-r-0" data-testid={`button-journal-${number}`}><div className="mb-16 flex items-start justify-between"><span className="font-mono text-[10px] text-[#e8a0bd]">{number}</span><ArrowUpRight className="h-4 w-4 text-[#8e8474] transition group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-[#d6b35a]" strokeWidth={1.2} /></div><h3 className="max-w-[230px] font-serif text-2xl leading-tight text-[#e8e2d4]">{title}</h3><p className="mt-4 max-w-[230px] text-xs leading-5 text-[#a99f8c]">{text}</p><p className="eyebrow mt-8 !text-[#7d7467]">Read story</p></button>)}
             </div>
@@ -243,7 +341,7 @@ function Home() {
         <div className="mx-auto grid max-w-[1240px] gap-12 md:grid-cols-[1.2fr_.8fr_.8fr_1.4fr]">
           <div><Logo compact /><p className="mt-6 max-w-[210px] text-xs leading-6 text-[#7d7467]">A private atelier for considered entrances.</p></div>
           <div><p className="eyebrow mb-5">Explore</p><div className="flex flex-col gap-3 text-xs text-[#b9ae9a]">{navItems.map((item) => <a href={item.href} key={item.href} className="transition hover:text-[#e8a0bd]" data-testid={`link-footer-${item.label.toLowerCase().replace(' ', '-')}`}>{item.label}</a>)}</div></div>
-          <div><p className="eyebrow mb-5">Follow</p><button className="flex items-center gap-2 text-xs text-[#b9ae9a] transition hover:text-[#e8a0bd]" data-testid="link-instagram">Instagram <Instagram className="h-3.5 w-3.5" /></button><p className="mt-3 text-xs text-[#7d7467]">Paris · London · Online</p></div>
+           <div><p className="eyebrow mb-5">Follow</p><button onClick={() => setNotice('Instagram / @houseofsoura')} className="flex items-center gap-2 text-xs text-[#b9ae9a] transition hover:text-[#e8a0bd]" data-testid="link-instagram">Instagram <Instagram className="h-3.5 w-3.5" /></button><p className="mt-3 text-xs text-[#7d7467]">Paris · London · Online</p></div>
           <div><p className="eyebrow mb-5">A note from the house</p><p className="mb-5 text-xs leading-6 text-[#b9ae9a]">Occasional notes on dressing well, sent with restraint.</p>{subscribed ? <div className="flex items-center gap-2 text-xs text-[#e8a0bd]" data-testid="status-subscribed"><Check className="h-4 w-4" /> You are on the list.</div> : <form onSubmit={(event) => { event.preventDefault(); if (email) setSubscribed(true); }} className="flex border-b border-[#d6b35a]/40 pb-2"><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="Your email address" className="w-full bg-transparent text-xs text-[#e8e2d4] outline-none placeholder:text-[#6f675d]" aria-label="Email address" data-testid="input-newsletter-email" /><button type="submit" aria-label="Subscribe" className="text-[#d6b35a] transition hover:text-[#e8a0bd]" data-testid="button-subscribe"><ArrowRight className="h-4 w-4" strokeWidth={1.2} /></button></form>}</div>
         </div>
         <div className="mx-auto mt-16 flex max-w-[1240px] justify-between border-t border-[#d6b35a]/15 pt-5 text-[9px] uppercase tracking-[.2em] text-[#655e55]"><span>© 2024 House of Soura</span><span>Made for the moment</span></div>
@@ -256,7 +354,7 @@ function Home() {
       {searchOpen && <div className="fixed left-0 right-0 top-0 z-[70] bg-[#211d18] px-6 pb-16 pt-7 shadow-2xl shadow-black/50 sm:px-12" data-testid="overlay-search"><div className="mx-auto max-w-[1240px]"><div className="flex items-center justify-between"><Logo compact /><button onClick={() => setSearchOpen(false)} className="text-[#d6b35a]" aria-label="Close search" data-testid="button-close-search"><X className="h-5 w-5" strokeWidth={1.2} /></button></div><div className="mt-20 flex items-center gap-4 border-b border-[#d6b35a]/50 pb-4"><Search className="h-5 w-5 text-[#d6b35a]" strokeWidth={1.2} /><input autoFocus type="search" placeholder="Search the house" className="w-full bg-transparent font-serif text-3xl text-[#e8e2d4] outline-none placeholder:text-[#6f675d] sm:text-5xl" data-testid="input-search" /></div><p className="eyebrow mt-5">Try “silk”, “evening”, or “tailoring”</p></div></div>}
       {bagOpen && <aside className="fixed right-0 top-0 z-[70] flex h-full w-full max-w-md flex-col bg-[#211d18] p-7 shadow-2xl shadow-black/60 sm:p-10" data-testid="overlay-bag"><div className="flex items-center justify-between"><div><p className="eyebrow mb-2">Your selection</p><h2 className="font-serif text-3xl text-[#e8e2d4]">The bag <span className="text-[#e8a0bd]">({bag.length})</span></h2></div><button onClick={() => setBagOpen(false)} className="text-[#d6b35a]" aria-label="Close bag" data-testid="button-close-bag"><X className="h-5 w-5" strokeWidth={1.2} /></button></div>{bag.length === 0 ? <div className="flex flex-1 flex-col items-center justify-center text-center"><ShoppingBag className="mb-5 h-8 w-8 text-[#d6b35a]/60" strokeWidth={1} /><p className="font-serif text-2xl text-[#e8e2d4]">Nothing here yet.</p><p className="mt-3 max-w-[230px] text-xs leading-5 text-[#a99f8c]">The right piece has a way of finding you.</p><button onClick={() => { setBagOpen(false); document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' }); }} className="mt-8 border-b border-[#d6b35a] pb-2 text-[10px] uppercase tracking-[.2em] text-[#d6b35a]" data-testid="button-continue-shopping">Continue shopping</button></div> : <><div className="mt-10 flex-1 space-y-5 overflow-y-auto">{bag.map((product, index) => <div className="flex gap-4 border-b border-[#d6b35a]/20 pb-5" key={`${product.id}-${index}`}><img src={product.image} alt="" className="h-24 w-20 object-cover" /><div className="flex-1"><div className="flex justify-between gap-2"><p className="font-serif text-lg text-[#e8e2d4]">{product.name}</p><p className="text-sm text-[#e8a0bd]">{product.price}</p></div><p className="eyebrow mt-2">{product.color}</p><button onClick={() => setBag((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="mt-4 text-[9px] uppercase tracking-[.2em] text-[#7d7467] hover:text-[#e8a0bd]" data-testid={`button-remove-bag-${index}`}>Remove</button></div></div>)}</div><div className="border-t border-[#d6b35a]/30 pt-6"><div className="mb-5 flex justify-between text-sm"><span className="text-[#a99f8c]">Subtotal</span><span className="text-[#e8e2d4]">€{bag.reduce((sum, product) => sum + Number(product.price.replace(/[€,.]/g, '')), 0).toLocaleString()}</span></div><PrimaryButton testId="button-checkout" onClick={() => setNotice('Checkout is reserved for private clients')}>Proceed to checkout</PrimaryButton></div></>}</aside>}
 
-      {quickView && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[#0d0b09]/80 p-4 backdrop-blur-md sm:p-8" data-testid="modal-quick-view"><div className="relative grid max-h-[90vh] w-full max-w-4xl overflow-y-auto bg-[#211d18] md:grid-cols-2"><button onClick={() => setQuickView(null)} className="absolute right-5 top-5 z-10 text-[#e8e2d4]" aria-label="Close quick view" data-testid="button-close-quick-view"><X className="h-5 w-5" strokeWidth={1.2} /></button><div className="aspect-[.85] max-h-[55vh] overflow-hidden md:max-h-none"><img src={quickView.image} alt={quickView.name} className="h-full w-full object-cover" /></div><div className="flex flex-col justify-center p-7 sm:p-12"><p className="eyebrow mb-3">{quickView.category}</p><h2 className="font-serif text-4xl leading-none text-[#e8e2d4]">{quickView.name}</h2><p className="mt-4 text-lg text-[#e8a0bd]">{quickView.price}</p><p className="mt-8 text-sm leading-7 text-[#a99f8c]">{quickView.description}</p><div className="mt-8"><p className="eyebrow mb-3">Select size</p><div className="flex flex-wrap gap-2">{quickView.sizes.map((size) => <button onClick={() => setSelectedSize(size)} key={size} className={`flex h-10 min-w-11 items-center justify-center border px-3 text-xs transition ${selectedSize === size ? 'border-[#e8a0bd] bg-[#e8a0bd] text-[#171411]' : 'border-[#d6b35a]/35 text-[#e8e2d4] hover:border-[#d6b35a]'}`} data-testid={`button-size-${size}`}>{size}</button>)}</div></div><button onClick={() => addToBag(quickView, selectedSize)} className="mt-9 flex items-center justify-between border border-[#d6b35a] bg-[#d6b35a] px-5 py-4 text-[10px] font-semibold uppercase tracking-[.2em] text-[#171411] transition hover:bg-[#e8a0bd]" data-testid="button-add-to-bag">Add to bag <ShoppingBag className="h-4 w-4" strokeWidth={1.3} /></button><button onClick={() => setNotice('Saved to your private wishlist')} className="mt-4 flex items-center justify-center gap-2 py-2 text-[10px] uppercase tracking-[.2em] text-[#a99f8c] hover:text-[#e8a0bd]" data-testid="button-add-wishlist"><Heart className="h-3.5 w-3.5" strokeWidth={1.2} /> Save for later</button></div></div></div>}
+      {quickView && <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[#0d0b09]/80 p-4 backdrop-blur-md sm:p-8" role="dialog" aria-modal="true" aria-labelledby="quick-view-title" data-testid="modal-quick-view"><div className="relative grid max-h-[90vh] w-full max-w-4xl overflow-y-auto bg-[#211d18] md:grid-cols-2"><button onClick={() => setQuickView(null)} className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center border border-[#d6b35a]/30 bg-[#171411]/60 text-[#e8e2d4] transition hover:border-[#e8a0bd] hover:text-[#e8a0bd]" aria-label="Close quick view" data-testid="button-close-quick-view"><X className="h-5 w-5" strokeWidth={1.2} /></button><div className="aspect-[.85] max-h-[55vh] overflow-hidden md:max-h-none"><img src={quickView.image} alt={quickView.name} className="h-full w-full object-cover" /></div><div className="flex flex-col justify-center p-7 sm:p-12"><p className="eyebrow mb-3">{quickView.category}</p><h2 id="quick-view-title" className="font-serif text-4xl leading-none text-[#e8e2d4]">{quickView.name}</h2><p className="mt-4 text-lg text-[#e8a0bd]">{quickView.price}</p><p className="mt-8 text-sm leading-7 text-[#a99f8c]">{quickView.description}</p><div className="mt-8"><p className="eyebrow mb-3">Select size</p><div className="flex flex-wrap gap-2">{quickView.sizes.map((size) => <button onClick={() => setSelectedSize(size)} key={size} className={`flex h-10 min-w-11 items-center justify-center border px-3 text-xs transition ${selectedSize === size ? 'border-[#e8a0bd] bg-[#e8a0bd] text-[#171411]' : 'border-[#d6b35a]/35 text-[#e8e2d4] hover:border-[#d6b35a]'}`} data-testid={`button-size-${size}`}>{size}</button>)}</div></div><button onClick={() => addToBag(quickView, selectedSize)} className="mt-9 flex items-center justify-between border border-[#d6b35a] bg-[#d6b35a] px-5 py-4 text-[10px] font-semibold uppercase tracking-[.2em] text-[#171411] transition hover:bg-[#e8a0bd]" data-testid="button-add-to-bag">Add to bag <ShoppingBag className="h-4 w-4" strokeWidth={1.3} /></button><button onClick={() => setNotice('Saved to your private wishlist')} className="mt-4 flex items-center justify-center gap-2 py-2 text-[10px] uppercase tracking-[.2em] text-[#a99f8c] hover:text-[#e8a0bd]" data-testid="button-add-wishlist"><Heart className="h-3.5 w-3.5" strokeWidth={1.2} /> Save for later</button></div></div></div>}
     </div>
   );
 }

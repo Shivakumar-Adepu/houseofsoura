@@ -90,10 +90,74 @@ button { cursor: pointer; }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { scrollbar-width: none; }
 
+.wardrobe-stage {
+  perspective: 1500px;
+  perspective-origin: 50% 43%;
+  transform-style: preserve-3d;
+}
+.wardrobe-track {
+  position: relative;
+  height: clamp(390px, 51vw, 610px);
+  transform-style: preserve-3d;
+}
+.wardrobe-slide {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: min(63vw, 350px);
+  height: 100%;
+  transform-origin: 50% 72%;
+  transition: transform 720ms cubic-bezier(.16,.82,.24,1), opacity 620ms ease, filter 620ms ease;
+  will-change: transform, opacity, filter;
+}
+.wardrobe-slide img {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.wardrobe-slide-active::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  border: 1px solid rgba(232,160,189,.48);
+  opacity: .8;
+}
+.wardrobe-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: min(52vw, 310px);
+  height: 25px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0,0,0,.5);
+  filter: blur(18px);
+}
+.wardrobe-progress {
+  position: relative;
+  height: 1px;
+  background: rgba(214,179,90,.23);
+}
+.wardrobe-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #e8a0bd;
+  transition: width 480ms cubic-bezier(.2,.75,.2,1);
+}
+.drag-cursor { cursor: grab; }
+.drag-cursor:active { cursor: grabbing; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 1px solid #e8a0bd;
+  outline-offset: 4px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .wardrobe-slide, .wardrobe-progress > span { transition: none !important; }
 }
 @media (max-width: 767px) {
   .section-pad { padding: 5rem 1.25rem; }
+  .wardrobe-track { height: min(122vw, 520px); }
+  .wardrobe-slide { width: min(69vw, 300px); }
 }
