@@ -11,8 +11,9 @@
     "vercel-build": "pnpm --filter @workspace/house-of-soura build"
   },
   "private": true,
+  "packageManager": "pnpm@9.15.4",
   "engines": {
-    "node": "18.x"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1"
